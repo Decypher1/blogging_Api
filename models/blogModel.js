@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const User = require("./usersModel")
 
 const blogSchema = new mongoose.Schema({
 
@@ -15,11 +16,14 @@ const blogSchema = new mongoose.Schema({
     required: true
   },
   
-  tags: [ String ],
+  tags: {
+    type: [ String ]
+  },
   
   state: {
     type: String,
-    default: 'draft', enum: ['draft', 'published']
+    enum: ['draft', 'published'],
+    default: 'draft'
   },
   
   readCount: {
@@ -29,8 +33,23 @@ const blogSchema = new mongoose.Schema({
   
   readingTime: {
     type: Number
-  }
-  
-})
+  },
 
-module.exports = mongoose.model('blog', blogSchema)
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: "User"
+  },
+
+  body: {
+    type: String,
+    required: true
+  }
+},
+  
+{ timestamps: true }
+);
+
+
+const blog = mongoose.model('blog', blogSchema);
+
+module.exports = blog;
