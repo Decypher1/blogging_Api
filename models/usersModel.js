@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
 const validator = require('validator')
 
-const ObjectId = Schema.ObjectId;
+
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
@@ -33,8 +33,15 @@ const userSchema = new mongoose.Schema({
 
   confirmPassword: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
+
+  article: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'blog',
+    }
+  ]
 },
 
 {timestamps : true});
