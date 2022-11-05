@@ -5,7 +5,7 @@ const cookieParser = require("cookie-parser")
 const morgan = require("morgan")
 
 //ROUTES
-const userRoute = require("./routes/userRoute");
+const accountRoute = require("./routes/userRoute");
 const blogRoute = require("./routes/blogRoute");
 require("dotenv").config()
 

@@ -13,7 +13,7 @@ const Signup = async (req, res, next) => {
         return res.status(400).send({ message: 'Please fill all the fields!' });
     }
     
-    //Comfirming passwords are the same
+    //Confirming passwords are the same
     if (password !== confirmPassword) {
         return res.status(400).send({ message: 'Password did not match!' });
     }

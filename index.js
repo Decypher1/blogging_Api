@@ -1,18 +1,14 @@
-const express = require('express');
-const mongoose = require('mongoose');
 const connectToMongoDB = require('./db');
+const app = require("./app")
 require("dotenv").config()
 PORT = process.env.PORT
 
-const db = require("./db")
-
-const app = express()
 
 app.get('/', (req, res) => {
-    res.send("Welcome to homepage")
+    res.send("Welcome to my homepage, Please Signup or login")
 })
 
-//Connecting to server
+//Connecting to local server
 connectToMongoDB()
 
 app.listen(PORT, () => {
