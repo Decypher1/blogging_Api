@@ -1,27 +1,30 @@
+//Dependencies
 const express = require("express");
-const db = require("./db");
-const blogController = require("./controllers/blogController");
-const validatePassword = require("./utils/validatePassword");
-const authController = require("./controllers/authController");
+
+const cookieParser = require("cookie-parser")
+const morgan = require("morgan")
+
+//ROUTES
 const userRoute = require("./routes/userRoute");
 const blogRoute = require("./routes/blogRoute");
+require("dotenv").config()
 
 const app = express();
 
 app.use(express.json());
-app.use("/user", userRoute);
+app.use(express.urlencoded({ extended: false}))
 
-app.get("/", (req, res) => {
-  console.log("Starting my exam!!!");
-  return res.status(200).json({
-    status: "success",
-    message: "Welcome to my Blog Website",
-  });
-});
+app.use(morgan());
+app.use(cookieParser())
+
+
+app.use("/", accountRoute);
+app.use("/blog", blogRoute);
+
 
 // catching all  undefined routes
 app.all("*", (req, res, next) => {
-  next(res.status(404).send(`Page not found!`));
+  next(res.status(404).json({message : 'Page not found!'}));
 });
 
 module.exports = app;
