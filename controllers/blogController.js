@@ -17,7 +17,7 @@ const getAllBlogs = async (req, res, next) => {
         } else if (req.query.title) {
             search = { title: req.query.title };
         } else if (req.query.tags) {
-            search = { tags: req.query.tag };
+            search = { tags: req.query.tags };
         }
 
         // GET blogs from the database
@@ -34,7 +34,7 @@ const getAllBlogs = async (req, res, next) => {
             res.status(200).send({
                 message: blogs,
                 totalPages: Math.ceil(count / limit),
-                currentPage: page,
+                currentPage: page
             });
         } else {
             res.status(404).send({ message: 'No Blog Found' });
@@ -57,7 +57,6 @@ const getSingleBlog = async (req, res, next) => {
 
         singleBlog.readCount++;
         const blog = await singleBlog.save();
-
         res.status(200).send({ blog: blog });
     } catch (error) {
         next(error);
@@ -99,7 +98,7 @@ const createBlog = async (req, res, next) => {
 
 //UPDATING BLOG BY USER
 const updateBlog = async (req, res, next) => {
-    const { state, title, description, body, tags } = req.body;
+    const { title, description, state,  body, tags } = req.body;
     try {
         const user = req.user;
 
@@ -141,9 +140,19 @@ const deleteBlog = async (req, res, next) => {
 
         if (user.id === blog.user._id.toString()) {
             await blogModel.findByIdAndDelete(req.params.id);
-            return res.status(201).send({ message: 'Blog deleted successfully' });
+            
+            const user = await UserModel.findById(req.user._id);
+            const index = user.article.indexOf(req.params.id)
+            
+            if (index !== -1) 
+            {
+                user.article.splice(index, 1);
+                await user.save();
+                res.status(201).send({message: 'Blog deleted succesfully!'})
+            }
+            
         } else {
-            res.status(401).send({ message: 'Not Authorized!' });
+            res.status(401).send({ message: 'Not Authorized to perform this action!' });
         }
     } catch (error) {
         next(error);
@@ -156,7 +165,6 @@ const userBlogs = async (req, res, next) => {
     try {
         const user = req.user;
 
-        // implementing pagination
         const page = parseInt(req.query.page) || 0;
         const limit = parseInt(req.query.limit) || 20;
 

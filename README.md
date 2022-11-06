@@ -139,7 +139,13 @@ Success
 ```
 
 ```
-
+### Create blog
+To get all blogs
+- Route: /blogs
+- Method: GET
+- Header
+    - Authorization: Bearer {token}
+- Body: 
 
 ```
 ---

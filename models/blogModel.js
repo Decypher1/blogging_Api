@@ -33,7 +33,7 @@ const blogSchema = new mongoose.Schema(
   },
   
   readingTime: {
-    type: Number
+    type: String
   },
 
   user: {

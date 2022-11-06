@@ -43,7 +43,7 @@ const login = async (req, res, next) => {
     }
 
     try {
-        const user = await UserModel.findOne({ email: email });
+        const user = await UserModel.findOne({ email });
 
         if (!user){
             return res.status(401).send({ message: 'This email is not found!' });
@@ -82,6 +82,4 @@ const logout = async (req, res) => {
     res.send('Logged out successfully!');
 };
 
-const account  = { Signup, login, logout };
-
-module.exports = account
+module.exports  = { Signup, login, logout };

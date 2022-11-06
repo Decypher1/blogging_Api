@@ -12,9 +12,9 @@ const  authenticateToken  = require('../middleware/authToken');
 
 const blogRoute = express.Router();
 
-blogRoute.route('/').post(authenticateToken, createBlog).get(getAllBlogs);
+blogRoute.route('/blogs').post(authenticateToken, createBlog).get(getAllBlogs);
 
-blogRoute.route('/userblogs').get(authenticateToken, userBlogs);
+blogRoute.route('/userblog').get(authenticateToken, userBlogs);
 
 blogRoute
     .route('/:id')

@@ -2,7 +2,6 @@
 const express = require("express");
 
 const cookieParser = require("cookie-parser")
-const morgan = require("morgan")
 
 //ROUTES
 const accountRoute = require("./routes/userRoute");
@@ -14,7 +13,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false}))
 
-app.use(morgan());
+
 app.use(cookieParser())
 
 
