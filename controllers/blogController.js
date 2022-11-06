@@ -1,203 +1,242 @@
 const blogModel = require('../models/blogModel');
 const UserModel = require('../models/usersModel');
 const Jwt = require('jsonwebtoken');
+const { getToken, decryptToken} = require('../utils/authToken')
 require('dotenv').config();
 
 
 const getAllBlogs = async (req, res, next) => {
     try {
+        let query = blogModel.find({state: { $ne: 'draft' }})
+        const queryObj = {...req.query};
+        const excludedFields = ['page', 'sort', 'limit'];
+        excludedFields.forEach(el => delete queryObj[el]);
+
+        query = query.find(queryObj);
+
+        if(req.query.sort) {
+            const sortBy = req.query.sort.split(',').join('');
+            query = query.sort(sortBy);
+        } else {
+            query = query.sort('-readCount -readingTime -timestamp') //  sorting
+        }
+        
+
         //PAGINATION
         const page = parseInt(req.query.page) || 0;
         const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
 
-        // SEARCHING by title, author and tags
-        let search = {};
-        if (req.query.author) {
-            search = { author: req.query.author };
-        } else if (req.query.title) {
-            search = { title: req.query.title };
-        } else if (req.query.tags) {
-            search = { tags: req.query.tags };
+        if (req.query.page) {
+            const collectionCount = await blogModel.countDocuments();
+            if(skip >= collectionCount) return next(res.status(404).send('This page does not exist'));
         }
+    
+        query = query.skip(skip).limit(limit);
+    
+        query = query.select('-__v').populate('author', {firstName: 1, lastName: 1});
 
-        // GET blogs from the database
-        const blogs = await blogModel
-            .find(search)
-            .where({ state: 'published' })
-            .sort({ readingTime: 1, readCount: -1, timestamps: -1 })
-            .skip(page * limit)
-            .limit(limit);
+        // If no details are returned 
+        if (query.length === 0) return next(res.status(404).send('No result returned'));
 
-        const count = await blogModel.countDocuments();
+        const blogs = await query;
 
-        if (blogs) {
-            res.status(200).send({
-                message: blogs,
-                totalPages: Math.ceil(count / limit),
-                currentPage: page
-            });
-        } else {
-            res.status(404).send({ message: 'No Blog Found' });
-        }
-    } catch (error) {
-        next(error);
-    }
-};
-
-//GET SINGLE BLOG
-const getSingleBlog = async (req, res, next) => {
-    try {
-        const singleBlog = await blogModel
-            .findById(req.params.id)
-            .where({ state: 'published' })
-            .populate('user', { firstName: 1, lastName: 1, email: 1 });
-
-        if (!singleBlog)
-            return res.status(404).send({ message: 'Blog NOT FOUND' });
-
-        singleBlog.readCount++;
-        const blog = await singleBlog.save();
-        res.status(200).send({ blog: blog });
+        res.status(200).json({
+            status: 'success',
+            length: blogs.length,
+            data: {
+                blogs
+            }
+        });
     } catch (error) {
         next(error);
     }
 };
 
 
-//Creating a NEW blog
+//Create a new blog
 const createBlog = async (req, res, next) => {
-    const { title, description, body, tags } = req.body;
-
+    const { title, description, state, tags, body } = req.body;
     if (!title || !description || !body || !tags) {
         return res.status(400).send({ message: 'Required fields are empty!' });
     }
     try {
-        const user = await UserModel.findById(req.user._id);
+        // Extract author/user id from the token received
+        const author_id = (await decryptToken(req.headers.authorization)).id;
 
-        const notes = new blogModel({
+        const author = await UserModel.findById(author_id)
+
+        const blog = new blogModel({
             title,
             description,
-            author: `${user.firstName} ${user.lastName}`,
-            body,
+            state,
             tags,
-            readingTime: readingTime(body),
-            user: user._id,
-        });
+            body,
+            author: author._id
+        })
+        const savedBlog = await blog.save();
 
-        const savedNotes = await notes.save();
+        author.article = author.article.concat(savedBlog._id);
+        await author.save();
 
-        
-        user.article = user.article.concat(savedNotes._id);
-        await user.save();
-
-        res.status(201).send({ message: 'Blog created Successfully!' });
-    } catch (error) {
-        next(error);
+        res.status(201).json({
+            status: 'success',
+            data: {
+                user: savedBlog
+            }
+        })
+    } catch (err) {
+        next(err)
     }
 };
 
-//UPDATING BLOG BY USER
-const updateBlog = async (req, res, next) => {
-    const { title, description, state,  body, tags } = req.body;
+//Get a blog by id
+const getBlog = async (req, res, next) => {
     try {
-        const user = req.user;
+        const blogID = req.params.id;
 
-        const blog = await blogModel.findById(req.params.id);
+        let query = blogModel.findOneAndUpdate({state: { $ne: 'draft' }, _id: blogID}, {$inc: {readCount: 1}}, {new: true})
+    
+        query = query.select('-__v').populate('author', {firstName: 1, lastName: 1});
 
-        if (user.id === blog.user._id.toString()) {
-            const updatedBlog = await blogModel.findByIdAndUpdate(
-                { _id: req.params.id },
-                {
-                    $set: {
-                        state,
-                        title,
-                        description,
-                        body,
-                        tags,
-                    },
-                },
-                {
-                    new: true,
-                }
-            );
+        const blog = await query;
 
-            res.status(200).send(updatedBlog);
-        } else {
-            res.status(401).send({ message: 'Not Authorized!' });
-        }
-    } catch (error) {
-        next(error);
+        // If no details returned in the query, the below error is encountered
+        if (!blog) return next(new Error('No result returned', 404));
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                blog
+            }
+        })
+    } catch (err) {
+        next(err)
     }
 };
 
 
-//DELETE BLOG BY USER
+
+const getUserBlogs = async (req, res, next) => {
+    try {
+        const author = req.user['_id'].toString();
+
+        const queryObj = {...req.query};
+        const excludedFields = ['page', 'sort', 'limit'];
+        excludedFields.forEach(el => delete queryObj[el]);
+
+        let query = blogModel.find({author});
+
+        query = query.find(queryObj);
+    
+        if(req.query.sort) {
+            const sortBy = req.query.sort.split(',').join('');
+            query = query.sort(sortBy);
+        } else {
+            query = query.sort('-timestamp') // default sorting
+        }
+
+        // For pagination
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 20;
+        const skip = (page - 1) * limit;
+
+        if (req.query.page) {
+            const collectionCount = await query.countDocuments();
+            if(skip >= collectionCount) return next(new Error('This page does not exist', 404));
+        }
+
+        query = query.skip(skip).limit(limit);
+
+        query = query.select('-__v').populate('author', {firstName: 1, lastName: 1});
+
+        // If no details returned in the query
+        if (!query) return next(new Error('No result returned', 404));
+
+        const blogs = await query;
+
+        res.status(200).json({
+            status: 'success',
+            length: blogs.length,
+            data: {
+                blogs
+            }
+        });
+    } catch (error) {
+        next(error)
+    }
+
+};
+
+//update blog
+const updateBlog = async (req, res, next) => {
+    const userID = req.user['_id'].toString();
+    const blogID = req.params.id;
+    const blogState = req.body.state;
+    const reqBody = req.body;
+
+    const excludedFields = ['readCount', 'author', '_id'];
+    excludedFields.forEach(el => delete reqBody[el]);
+    
+    const author = await blogModel.findById(blogID);
+
+    if (!author) return next(new Error('Invalid Blog ID provided', 400));
+    
+    if (userID !== author.author.toString()) {
+        return next(new Error('You are not authorized to update this blog', 401));
+    }
+
+    if(blogState){
+        if (blogState !== "draft" && blogState !== "published") {
+            return next(new Error(`Blog state can either be 'published' or 'draft'`, 401));
+        }
+    }
+
+    const updatedArticle = await blogModel.findByIdAndUpdate(blogID, reqBody, {new: true});
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            updatedArticle
+        }
+    });
+};
+
+
+
+//Delete blog
 const deleteBlog = async (req, res, next) => {
     try {
-        const user = req.user;
+        const userID = req.user['_id'].toString();
+        const blogID = req.params.id;
 
-        const blog = await blogModel.findById(req.params.id);
+        const author = await blogModel.findById(blogID);
+        if(!author) return next(new Error('Blog  not Found!', 404));
 
-        if (user.id === blog.user._id.toString()) {
-            await blogModel.findByIdAndDelete(req.params.id);
-            
-            const user = await UserModel.findById(req.user._id);
-            const index = user.article.indexOf(req.params.id)
-            
-            if (index !== -1) 
-            {
-                user.article.splice(index, 1);
-                await user.save();
-                res.status(201).send({message: 'Blog deleted succesfully!'})
-            }
-            
-        } else {
-            res.status(401).send({ message: 'Not Authorized to perform this action!' });
+        if (userID !== author.author.toString()) {
+            return next(new Error('Blog can only be deleted by owner. Please log in', 401));
         }
-    } catch (error) {
-        next(error);
-    }
-};
 
+        await blogModel.deleteOne({_id: blogID});
 
-
-const userBlogs = async (req, res, next) => {
-    try {
-        const user = req.user;
-
-        const page = parseInt(req.query.page) || 0;
-        const limit = parseInt(req.query.limit) || 20;
-
-        const User = await UserModel.findById(user.id)
-            .populate('article')
-            .skip(page * limit)
-            .limit(limit);
-        const count = await UserModel.countDocuments();
-
-        res.status(200).send({
-            message: 'Your blog post',
-            blogs: User.article,
-            totalPages: Math.ceil(count / limit),
-            currentPage: page
+        res.status(200).json({
+            status: 'success',
+            data: {
+                blogID
+            }
         });
-    } catch (error) {
-        next(error);
-    }
-};
 
-// Math for time to read a book
-const readingTime = (body) => {
-    const wpm = 300;
-    const text = body.trim().split(/\s+/).length;
-    const time = Math.ceil(text / wpm);
-    return `${time} mins`;
+    } catch(error) {
+        next(error)
+    }
+    
 };
 
 module.exports = {
     createBlog,
     getAllBlogs,
-    getSingleBlog,
+    getBlog,
     deleteBlog,
     updateBlog,
-    userBlogs,
+    getUserBlogs,
 };
