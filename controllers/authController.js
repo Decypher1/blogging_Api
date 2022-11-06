@@ -1,34 +1,39 @@
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/usersModel');
 const validatePassword = require('../utils/validatePassword')
+const {getToken, decryptToken, ensureCorrectUser} = require('../utils/authToken')
 const bcrypt = require('bcrypt')
 require('dotenv').config();
 
 //SIGNUP
 const Signup = async (req, res, next) => {
-    const { firstName, lastName, username, email, password, confirmPassword } = req.body;
+    const { firstName, lastName, username, email, password } = req.body;
        
     //checking to make sure all fields are filled 
-    if (!firstName ||!lastName ||!username||!email ||!password ||!confirmPassword) {
+    if (!firstName ||!lastName ||!username ||!email ||!password) {
         return res.status(400).send({ message: 'Please fill all the fields!' });
     }
     
-    //Confirming passwords are the same
-    if (password !== confirmPassword) {
-        return res.status(400).send({ message: 'Password did not match!' });
-    }
-
-
     //   Saving to the database
     try {
-        const user = await UserModel.create({
+        const user = UserModel.create({
             firstName,
             lastName,
-            email,
             username,
+            email,
             password
         });
-        return res.status(200).send({ message: 'User Account created successfully' });
+        const newUser = await user.save()
+        const token = await getToken(newUser._id);
+        return res.status(201).json(
+            {
+                status: 'Success',
+                author_id: user._id,
+                token,
+                data: {
+                    user: newUser
+                }
+              });
     } catch (error) {
         next(error);
     }
@@ -43,43 +48,37 @@ const login = async (req, res, next) => {
     }
 
     try {
-        const user = await UserModel.findOne({ email });
+        const user = await UserModel.findOne({ email }).select('+password');
 
-        if (!user){
-            return res.status(401).send({ message: 'This email is not found!' });
+        if (!user || !(await user.validatePassword(password, user.password))) {
+            return next(res.status(401).send({ message: 'This email or password is not found!' }));
         }
         
-        const validPassword = await user.validatePassword(password);
 
-        if (!validPassword)
-            return res.status(401).send({ message: 'Password is not correct!' });
-
-        const payload = {
-            id: user._id,
-            username: user.username,
-        };
-
-        const token = jwt.sign(payload, process.env.JWT_SECRET, {
-            expiresIn: process.env.EXPIRE || '1hr',
+        const token = getToken(user._id);
+        res.status(200).json({
+            status: 'success',
+            author_id: user._id,
+            token,
         });
         
-        res.cookie('accessToken', token, {
-            httpOnly: true,
-        }).send({
-            message: token,
-            email: user.email,
-            name: `${user.firstName} ${user.lastName}`,
-        });
     } catch (error) {
         next(error);
     }
 };
 
 
-//LOGOUT CONTROLLER
-const logout = async (req, res) => {
-    res.cookie('accessToken', '', { maxAge: 1 });
-    res.send('Logged out successfully!');
+const protectCreateBlog = async (req, res, next) => {
+    const requestHeader = req.headers.authorization;
+
+    // Verify the token received and confirm the user exist
+    const decrypt = await decryptToken(requestHeader);
+    const loginUser = await UserModel.findById(decrypt.id);
+    if (!loginUser) {
+        return next(res.status(401).send({message: 'The user with the received token does not exist'}));
+    }
+    req.user = loginUser;
+    next();
 };
 
-module.exports  = { Signup, login, logout };
+module.exports  = { Signup, login, protectCreateBlog };
