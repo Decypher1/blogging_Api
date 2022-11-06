@@ -5,4 +5,4 @@ const validPassword = async (password, hashedPassword) => {
     return userPassword;
 };
 
-module.exports = { validPassword };
+module.exports = validPassword;

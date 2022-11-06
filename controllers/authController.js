@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/usersModel');
-const validatePassword = require('../utils/validatePassword')
+const validPassword = require('../utils/validatePassword')
 const {getToken, decryptToken, ensureCorrectUser} = require('../utils/authToken')
 const bcrypt = require('bcrypt')
 require('dotenv').config();
@@ -50,7 +50,7 @@ const login = async (req, res, next) => {
     try {
         const user = await UserModel.findOne({ email }).select('+password');
 
-        if (!user || !(await user.validatePassword(password, user.password))) {
+        if (!user || !(await user.validPassword(password, user.password))) {
             return next(res.status(401).send({ message: 'This email or password is not found!' }));
         }
         
