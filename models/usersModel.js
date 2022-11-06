@@ -6,12 +6,12 @@ const validator = require('validator')
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
-    required: true,
+    required: [true, 'Please provide first name']
   },
   
   lastName: {
     type: String,
-    required: true,
+    required: [true, 'Please provide last name']
   },
   
   username: {
@@ -24,16 +24,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+    validate: [validator.isEmail, 'Please provide a valid email address']
   },
   
   password: {
     type: String,
-    required: true,
-  },
-
-  confirmPassword: {
-    type: String,
-    required: true,
+    required: [true, 'Please provide a password'],
+    minlength: [6, 'Password must be 6 and above characters in length'],
+    select: false
   },
 
   article: [
@@ -50,7 +48,7 @@ userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) {
         return next();
     }
-    this.password = await bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(this.password, 12);
     next();
   });
   
