@@ -2,24 +2,24 @@ const express = require('express');
 const {
     createBlog,
     getAllBlogs,
-    getSingleBlog,
+    getBlog,
     deleteBlog,
     updateBlog,
-    userBlogs,
+    getUserBlogs
 } = require('../controllers/blogController');
 
-const  authenticateToken  = require('../middleware/authToken');
+const  authenticateToken  = require('../utils/authToken');
+const {protectCreateBlog} = require('../controllers/authController');
 
-const blogRoute = express.Router();
+const router = express.Router();
 
-blogRoute.route('/blogs').post(authenticateToken, createBlog).get(getAllBlogs);
+router.route('/').get(getAllBlogs);
+router.post('/create', protectCreateBlog, createBlog)
+router.route('/all').get(protectCreateBlog, getUserBlogs);
+router.get('/:id', protectCreateBlog, updateBlog);
+router.put('/:id', protectCreateBlog, updateBlog);
+router.delete('/:id', protectCreateBlog, deleteBlog);
 
-blogRoute.route('/userblog').get(authenticateToken, userBlogs);
 
-blogRoute
-    .route('/:id')
-    .get(getSingleBlog)
-    .put(authenticateToken, updateBlog)
-    .delete(authenticateToken, deleteBlog);
 
-module.exports = blogRoute;
+module.exports = router;

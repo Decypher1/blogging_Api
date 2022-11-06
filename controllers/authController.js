@@ -75,7 +75,7 @@ const protectCreateBlog = async (req, res, next) => {
     const decrypt = await decryptToken(requestHeader);
     const loginUser = await UserModel.findById(decrypt.id);
     if (!loginUser) {
-        return next(res.status(401).send({message: 'The user with the received token does not exist'}));
+        return next(res.status(401).send({message: 'User does not exist!'}));
     }
     req.user = loginUser;
     next();
