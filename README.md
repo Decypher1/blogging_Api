@@ -37,7 +37,8 @@ This api has a general endpoint that shows a list of articles that have been cre
 ---
 ## Base URL
 - somehostsite.com
-
+PORT = 4000
+db = mongodb compass
 
 ## Models
 1. blogModel
@@ -128,7 +129,7 @@ Success
 ```
 
 ---
-### Create Order
+### Create blog
 
 - Route: /userblogs
 - Method: POST
