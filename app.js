@@ -1,10 +1,10 @@
 //Dependencies
 const express = require("express");
 
-const cookieParser = require("cookie-parser")
+const logger = require("morgan")
 
 //ROUTES
-const accountRoute = require("./routes/userRoute");
+const userRoute = require("./routes/userRoute");
 const blogRoute = require("./routes/blogRoute");
 require("dotenv").config()
 
@@ -14,9 +14,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false}))
 
 
+app.use("/api/v1/user", userRoute);
+app.use("/api/v1/blog", blogRoute);
 
-
-app.use("/", accountRoute);
+app.use("/", userRoute);
 app.use("/blog", blogRoute);
 
 
