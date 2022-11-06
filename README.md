@@ -131,7 +131,7 @@ Success
 ---
 ### Create blog
 
-- Route: /userblogs
+- Route: /userblog
 - Method: POST
 - Header
     - Authorization: Bearer {token}
