@@ -17,9 +17,17 @@ app.use(express.urlencoded({ extended: false}))
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/blog", blogRoute);
 
+
+
 app.use("/", userRoute);
 app.use("/blog", blogRoute);
 
+app.get("/api/v1", (req, res) => {
+  return res.status(200).json({
+    status: "success",
+    message: "Welcome to my Decypher's Blog Website",
+  });
+});
 
 // catching all  undefined routes
 app.all("*", (req, res, next) => {
