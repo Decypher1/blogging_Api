@@ -73,12 +73,9 @@ db = mongodb compass
 
 
 ## APIs
----app.get("/api/v1", (req, res) => {
-  return res.status(200).json({
-    status: "success",
-    message: "Welcome to my Decypher's Blog Website",
-  });
-});
+- Route: /api/v1
+- Method: Get 
+  
 
 
 ### Signup User

@@ -18,10 +18,6 @@ app.use("/api/v1/user", userRoute);
 app.use("/api/v1/blog", blogRoute);
 
 
-
-app.use("/", userRoute);
-app.use("/blog", blogRoute);
-
 app.get("/api/v1", (req, res) => {
   return res.status(200).json({
     status: "success",
